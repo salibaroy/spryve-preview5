@@ -184,7 +184,9 @@ export function ListingLayout<T>({
             </div>
           )
         ) : (
-          <motion.div layout className={cn(view === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-2.5')}>
+          /* Switching area remounts the listing, so the result set fades in once — a
+             clear change without moving long lists around. Filters only re-flow. */
+          <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} className={cn(view === 'grid' ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'flex flex-col gap-2.5')}>
             <AnimatePresence initial={false}>
               {l.results.map((item) => (
                 <motion.div key={(item as { id: string }).id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
@@ -230,7 +232,7 @@ export function AreaTabs({ items, active }: { items: { id: string; label: string
           <Link key={it.id} to={it.to} aria-current={on ? 'page' : undefined} className={cn('relative shrink-0 px-3 pt-2 pb-3 text-[0.875rem] font-medium transition-colors', on ? 'text-fg' : 'text-fg-2 hover:text-fg')}>
             {it.label}
             {it.count !== undefined && <span className="text-fg-2 ml-1.5 font-mono text-[0.75rem]">{it.count}</span>}
-            {on && <span className="bg-electric absolute inset-x-2 -bottom-px h-[2px] rounded-full" />}
+            {on && <motion.span layoutId="p5-area-tab" transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="bg-electric absolute inset-x-2 -bottom-px h-[2px] rounded-full" />}
           </Link>
         )
       })}

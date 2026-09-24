@@ -38,13 +38,18 @@ A "Higher contrast" appearance and a "Reduce motion" setting are available in Se
 
 ## Landing story
 
-Problem (scattered → one dashboard, timed) → the dashboard (auto-advancing tabs) →
-opportunities & knowledge (cycling directory filter) → Founders Hub (Present → Discover →
+Problem (scattered cards travel into one dashboard) → the dashboard (auto-advancing tabs) →
+opportunities & knowledge (directory tabs that lead out to providers) → Founders Hub (Present → Discover →
 Connect → Message) → the wider ecosystem (directory map) → Spryve Build (Idea → Shape →
 Design → Develop → Launch) → About us with the Spryve Nexus → invitation.
 
-Every scene is short, replayable and clickable; nothing pins the page into long scroll
-sequences. With reduced motion, scenes show their composed end state and stay clickable.
+Every scene starts the first time it enters the viewport, plays through once in a few
+seconds using timed motion (never scroll-to-advance or pinned sections), and then rests on a
+readable final state. Tabs, toggles and Replay override the timer at any point; tabbed scenes
+show a per-step progress bar and a Playing / Paused / Finished status. `useSequence` (one-shot
+timelines) and `useAutoCycle` (stepped scenes) in `src/lib/hooks.ts` drive all of it.
+With reduced motion (OS setting or Settings → Reduce motion), scenes render their completed
+state immediately and stay fully clickable.
 
 ## Routes
 

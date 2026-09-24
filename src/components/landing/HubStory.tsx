@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, Check, MapPin, Send, UserPlus } from 'lucide-react'
-import { Band, SceneSteps, SectionIntro } from './parts'
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { ArrowRight, Check, UserPlus } from 'lucide-react'
+import { Band, SceneStatus, SceneSteps, SectionIntro } from './parts'
+import { Avatar } from '@/components/ui'
 import { useAutoCycle, useCalm } from '@/lib/hooks'
-import { companies, SAMPLE_COMPANY } from '@/lib/data'
+import { companies, founderName, initialsOf, SAMPLE_COMPANY } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -14,50 +15,48 @@ const STEPS = [
   { id: 'message', label: 'Message', title: 'Keep the conversation going', body: 'Messages live next to the company profile, so context never gets lost in another app.' },
 ]
 
-const STEP_MS = 4600
+const STEP_MS = 3400
 const ease = [0.22, 1, 0.36, 1] as const
 
-function MiniCompany({ c, className }: { c: (typeof companies)[number]; className?: string }) {
-  return (
-    <div className={cn('border-line bg-raised rounded-[14px] border p-3.5', className)}>
-      <div className="flex items-center gap-2.5">
-        <span className={cn('grid h-8 w-8 place-items-center rounded-[8px] border font-mono text-[0.625rem]', c.accent === 'lime' ? 'border-lime/40 text-lime bg-lime/10' : c.accent === 'blue' ? 'border-electric/50 text-electric bg-electric/12' : 'border-line-strong text-fg')}>{c.mark}</span>
-        <span className="min-w-0">
-          <span className="text-fg block text-[0.875rem] font-semibold">{c.name}</span>
-          <span className="text-fg-2 block truncate text-[0.6875rem]">
-            {c.industry} · {c.stage}
-          </span>
-        </span>
-      </div>
-      <p className="text-fg-2 mt-2 line-clamp-2 text-[0.75rem]">{c.short}</p>
-    </div>
-  )
+/* Founders who fit Cadence (Healthtech · MVP · Beirut) — the first one is who we connect with. */
+const FOUNDERS = [
+  { c: companies.find((x) => x.slug === 'ostraka')!, why: 'Healthtech · Beirut' },
+  { c: companies.find((x) => x.slug === 'vessel')!, why: 'MVP · Beirut' },
+  { c: companies.find((x) => x.slug === 'fold')!, why: 'MVP · also early' },
+]
+const MATCH = FOUNDERS[0].c
+const MATCH_PERSON = founderName(MATCH)
+
+/** Runs a short in-step beat (e.g. form → card) each time a step is entered. */
+function useBeat(active: boolean, ms: number, calm: boolean) {
+  const [on, setOn] = useState(calm)
+  useEffect(() => {
+    if (!active) return
+    if (calm) return setOn(true)
+    setOn(false)
+    const id = window.setTimeout(() => setOn(true), ms)
+    return () => window.clearTimeout(id)
+  }, [active, ms, calm])
+  return on || calm
 }
 
-function PresentScene() {
-  const rows = [
-    ['Company name', SAMPLE_COMPANY.name],
-    ['One-line description', SAMPLE_COMPANY.short],
-    ['Stage · Industry', `${SAMPLE_COMPANY.stage} · ${SAMPLE_COMPANY.industry}`],
-    ['Looking for', SAMPLE_COMPANY.lookingFor.join(', ')],
-  ]
+function YouCard() {
   return (
-    <div className="grid h-full gap-4 sm:grid-cols-[1fr_0.9fr]">
-      <div className="flex flex-col gap-2.5">
-        {rows.map(([k, v], i) => (
-          <motion.div key={k} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.35, duration: 0.4, ease }}>
-            <p className="text-fg-2 text-[0.6875rem]">{k}</p>
-            <p className="border-line-strong bg-base text-fg mt-1 truncate rounded-[10px] border px-3 py-2 text-[0.8125rem]">{v}</p>
-          </motion.div>
-        ))}
-      </div>
-      <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.6, duration: 0.5, ease }} className="border-lime/40 bg-raised glow-lime self-center rounded-[16px] border p-4 max-sm:hidden">
-        <p className="eyebrow !text-[0.625rem]">Preview</p>
-        <div className="mt-3 flex items-center gap-2.5">
-          <span className="border-lime/40 text-lime bg-lime/10 grid h-9 w-9 place-items-center rounded-[9px] border font-mono text-[0.6875rem]">CD</span>
-          <span className="text-fg font-display text-[1rem] font-semibold">Cadence</span>
+    <motion.div layoutId="p5-hub-you" transition={{ layout: { duration: 0.6, ease } }} className="border-lime/45 bg-raised glow-lime rounded-[16px] border p-4">
+      <motion.div layout="position" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35, delay: 0.25 }}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2.5">
+            <span className="border-lime/40 text-lime bg-lime/10 grid h-9 w-9 place-items-center rounded-[9px] border font-mono text-[0.6875rem]">CD</span>
+            <span>
+              <span className="text-fg font-display block text-[1rem] font-semibold">{SAMPLE_COMPANY.name}</span>
+              <span className="text-fg-2 block text-[0.6875rem]">
+                {SAMPLE_COMPANY.stage} · {SAMPLE_COMPANY.industry}
+              </span>
+            </span>
+          </span>
+          <span className="text-lime font-mono text-[0.5625rem] tracking-widest uppercase">Public card</span>
         </div>
-        <p className="text-fg-2 mt-2 text-[0.8125rem]">{SAMPLE_COMPANY.short}</p>
+        <p className="text-fg-2 mt-2.5 line-clamp-2 text-[0.8125rem]">{SAMPLE_COMPANY.short}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {SAMPLE_COMPANY.lookingFor.map((l) => (
             <span key={l} className="border-electric/40 text-fg rounded-full border px-2 py-0.5 text-[0.6875rem]">
@@ -65,118 +64,199 @@ function PresentScene() {
             </span>
           ))}
         </div>
-        <span className="btn btn-primary btn-sm mt-4 w-full">Publish profile</span>
       </motion.div>
-    </div>
+    </motion.div>
   )
 }
 
-function DiscoverScene() {
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        {['Healthtech', 'MVP', 'Beirut', 'Looking for: Mentorship'].map((c, i) => (
-          <motion.span key={c} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="chip" data-active={i < 2}>
-            {c}
-          </motion.span>
-        ))}
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {companies.slice(0, 4).map((c, i) => (
-          <motion.div key={c.slug} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.1, duration: 0.45, ease }} className={cn(i > 1 && 'max-sm:hidden')}>
-            <MiniCompany c={c} />
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ConnectScene({ calm }: { calm: boolean }) {
-  const [sent, setSent] = useState(calm)
-  useEffect(() => {
-    if (calm) return
-    const id = window.setTimeout(() => setSent(true), 1500)
-    return () => window.clearTimeout(id)
-  }, [calm])
-  const c = companies[1]
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6">
-      <div className="flex items-center gap-3 sm:gap-5">
-        <span className="border-lime/50 text-lime bg-lime/10 grid h-14 w-14 place-items-center rounded-full border font-mono text-[0.8125rem]">LH</span>
-        <svg width="120" height="8" viewBox="0 0 120 8" className="max-sm:w-16" aria-hidden>
-          <motion.line x1="2" y1="4" x2="118" y2="4" stroke="var(--brand-tertiary)" strokeWidth="2" strokeDasharray="4 5" initial={{ pathLength: 0 }} animate={{ pathLength: sent ? 1 : 0.15 }} transition={{ duration: 0.9, ease }} />
-        </svg>
-        <span className="border-electric/50 text-electric bg-electric/12 grid h-14 w-14 place-items-center rounded-full border font-mono text-[0.8125rem]">MS</span>
-      </div>
-      <div className="border-line bg-raised w-full max-w-sm rounded-[16px] border p-4">
-        <div className="flex items-center justify-between gap-3">
-          <span>
-            <span className="text-fg block text-[0.9375rem] font-semibold">Maya Sleiman</span>
-            <span className="text-fg-2 flex items-center gap-1 text-[0.75rem]">
-              <MapPin className="h-3 w-3" aria-hidden />
-              {c.name} · {c.location}
-            </span>
-          </span>
-          <motion.span layout className={cn('btn btn-sm', sent ? 'btn-connect' : 'btn-primary')}>
-            {sent ? <Check className="h-3.5 w-3.5" aria-hidden /> : <UserPlus className="h-3.5 w-3.5" aria-hidden />}
-            {sent ? 'Request sent' : 'Connect'}
-          </motion.span>
-        </div>
-        <p className="border-line text-fg-2 mt-3 border-t pt-3 text-[0.8125rem]">“Both running hospital pilots — would love to compare notes.”</p>
-      </div>
-    </div>
-  )
-}
-
-function MessageScene() {
-  const msgs = [
-    { me: false, text: 'Hi Lina — happy to compare notes on procurement.' },
-    { me: true, text: 'Great. Could you share what got your pilot signed?' },
-    { me: false, text: 'Of course. Free Thursday afternoon?' },
+function CompanyForm() {
+  const rows = [
+    ['Company name', SAMPLE_COMPANY.name],
+    ['One-line description', SAMPLE_COMPANY.short],
+    ['Stage · Industry', `${SAMPLE_COMPANY.stage} · ${SAMPLE_COMPANY.industry}`],
+    ['Looking for', SAMPLE_COMPANY.lookingFor.join(', ')],
   ]
   return (
-    <div className="flex h-full flex-col justify-end gap-2.5">
-      {msgs.map((m, i) => (
-        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.7, duration: 0.4, ease }} className={cn('max-w-[80%] rounded-[16px] px-4 py-2.5 text-[0.875rem]', m.me ? 'bg-electric/20 border-electric/40 self-end rounded-br-[4px] border' : 'bg-raised border-line self-start rounded-bl-[4px] border')}>
-          {m.text}
+    <motion.div layoutId="p5-hub-you" className="border-line bg-raised flex flex-col gap-2 rounded-[16px] border p-4">
+      {rows.map(([k, v], i) => (
+        <motion.div key={k} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.2, duration: 0.35, ease }}>
+          <p className="text-fg-2 text-[0.625rem]">{k}</p>
+          <p className="border-line-strong bg-base text-fg mt-0.5 truncate rounded-[8px] border px-2.5 py-1.5 text-[0.75rem]">{v}</p>
         </motion.div>
       ))}
-      <div className="border-line-strong bg-raised mt-2 flex items-center gap-2 rounded-full border py-1.5 pr-1.5 pl-4">
-        <span className="text-fg-2 flex-1 text-[0.8125rem]">Write a message…</span>
-        <span className="bg-lime text-[var(--on-lime)] grid h-8 w-8 place-items-center rounded-full">
-          <Send className="h-3.5 w-3.5" aria-hidden />
+    </motion.div>
+  )
+}
+
+function FounderCard({ f, index, step, connected }: { f: (typeof FOUNDERS)[number]; index: number; step: number; connected: 'none' | 'sent' | 'yes' }) {
+  const match = index === 0
+  const person = founderName(f.c)
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: step >= 2 && !match ? 0.4 : 1, x: 0 }}
+      transition={{ duration: 0.45, ease, delay: step === 1 ? 0.15 + index * 0.14 : 0 }}
+      className={cn('bg-raised rounded-[14px] border p-3', match && step >= 1 ? 'border-electric/55 glow-blue' : 'border-line', index === 2 && 'max-sm:hidden')}
+    >
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Avatar initials={initialsOf(person)} size="sm" accent={f.c.accent} />
+        <span className="min-w-0">
+          <span className="text-fg block truncate text-[0.8125rem] font-semibold">{person}</span>
+          <span className="text-fg-2 block truncate text-[0.6875rem]">
+            {f.c.name} · {f.why}
+          </span>
         </span>
       </div>
+      {match && (
+        <div className="border-line mt-2.5 flex items-center justify-between gap-2 border-t pt-2.5">
+          <span className="text-electric font-mono text-[0.5625rem] tracking-widest uppercase">Fits Cadence</span>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={connected}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className={cn('btn btn-sm shrink-0 !px-2.5', connected === 'none' ? 'btn-primary' : 'btn-connect')}
+            >
+              {connected === 'none' ? <UserPlus className="h-3.5 w-3.5" aria-hidden /> : <Check className="h-3.5 w-3.5" aria-hidden />}
+              {connected === 'none' ? 'Connect' : connected === 'sent' ? 'Request sent' : 'Connected'}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+/** The link between the two cards: horizontal beside, vertical when stacked. */
+function Link2({ on, calm }: { on: boolean; calm: boolean }) {
+  return (
+    <div className="flex h-8 items-center justify-center sm:h-auto sm:pt-7" aria-hidden>
+      <svg viewBox="0 0 56 8" className="hidden w-full sm:block" preserveAspectRatio="none">
+        <line x1="2" y1="4" x2="54" y2="4" stroke="var(--line-strong)" strokeWidth="1.5" strokeDasharray="3 4" />
+        <motion.line
+          x1="2"
+          y1="4"
+          x2="54"
+          y2="4"
+          stroke="var(--brand-tertiary)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          initial={false}
+          animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }}
+          transition={{ duration: calm ? 0 : 0.7, ease }}
+        />
+      </svg>
+      <svg viewBox="0 0 8 32" className="h-full sm:hidden">
+        <line x1="4" y1="2" x2="4" y2="30" stroke="var(--line-strong)" strokeWidth="1.5" strokeDasharray="3 4" />
+        <motion.line
+          x1="4"
+          y1="2"
+          x2="4"
+          y2="30"
+          stroke="var(--brand-tertiary)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          initial={false}
+          animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }}
+          transition={{ duration: calm ? 0 : 0.7, ease }}
+        />
+      </svg>
     </div>
+  )
+}
+
+function MessagePreview() {
+  const msgs = [
+    { me: true, text: 'Both running hospital pilots — could we compare notes?' },
+    { me: false, text: 'Happy to. Thursday afternoon works.' },
+  ]
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease }} className="border-line bg-raised flex h-full flex-col rounded-[16px] border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-fg-2 text-[0.6875rem]">Message preview · {MATCH_PERSON}</span>
+        <span className="border-line-strong text-fg-2 rounded-full border px-2 py-0.5 font-mono text-[0.5625rem] tracking-widest uppercase">Illustration</span>
+      </div>
+      <div className="mt-2 flex flex-1 flex-col justify-end gap-1.5">
+        {msgs.map((m, i) => (
+          <motion.p
+            key={i}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.7, duration: 0.35, ease }}
+            className={cn('max-w-[80%] rounded-[14px] px-3 py-1.5 text-[0.75rem]', m.me ? 'bg-electric/20 border-electric/40 self-end rounded-br-[4px] border' : 'bg-base border-line self-start rounded-bl-[4px] border')}
+          >
+            {m.text}
+          </motion.p>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+function HubScene({ step, calm }: { step: number; calm: boolean }) {
+  const formed = useBeat(step === 0, 1300, calm)
+  const accepted = useBeat(step === 2, 1300, calm)
+  const connected: 'none' | 'sent' | 'yes' = step < 2 ? 'none' : step === 2 && !accepted ? 'sent' : 'yes'
+  return (
+    <LayoutGroup id="p5-hub">
+      <div className="grid gap-0 sm:grid-cols-[1fr_56px_1fr] sm:items-start">
+        <div>
+          <p className="eyebrow mb-2 !text-[0.5625rem]">You</p>
+          {step === 0 && !formed ? <CompanyForm /> : <YouCard />}
+        </div>
+        <Link2 on={step >= 2} calm={calm} />
+        <div>
+          <p className="eyebrow mb-2 !text-[0.5625rem]">{step >= 1 ? 'Founders who fit' : 'Founders Hub'}</p>
+          <div className="flex flex-col gap-2">
+            {step >= 1
+              ? FOUNDERS.map((f, i) => <FounderCard key={f.c.slug} f={f} index={i} step={step} connected={connected} />)
+              : [0, 1, 2].map((i) => <div key={i} className={cn('border-line-strong h-[58px] rounded-[14px] border border-dashed opacity-50', i === 2 && 'max-sm:hidden')} aria-hidden />)}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 h-[116px]">
+        {step >= 3 ? (
+          <MessagePreview />
+        ) : (
+          <div className="border-line-strong text-fg-2 grid h-full place-items-center rounded-[16px] border border-dashed text-[0.75rem] opacity-60">Conversations start once you connect</div>
+        )}
+      </div>
+    </LayoutGroup>
   )
 }
 
 export function HubStory() {
-  const scene = useAutoCycle(STEPS.length, STEP_MS, { loop: true })
+  const scene = useAutoCycle(STEPS.length, STEP_MS, { calmIndex: STEPS.length - 1 })
   const calm = useCalm()
   const s = STEPS[scene.index]
   return (
     <Band id="founders-hub">
       <div className="container-site">
-        <SectionIntro index="04" eyebrow="Founders Hub" title={<>Meet the people <span className="text-electric">building beside you.</span></>} body="Building a company isn’t only about tools. Founders Hub is where you present your company, find others, connect and talk." />
+        <SectionIntro
+          index="04"
+          eyebrow="Founders Hub"
+          title={
+            <>
+              Meet the people <span className="text-electric">building beside you.</span>
+            </>
+          }
+          body="Building a company isn’t only about tools. Founders Hub is where you present your company, find others, connect and talk."
+        />
 
         <div ref={scene.ref} className="mt-12 grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:gap-14">
-          <div className="border-line bg-base relative h-[380px] overflow-hidden rounded-[24px] border p-5 sm:h-[360px] sm:p-7">
+          <div className="border-line bg-base relative overflow-hidden rounded-[24px] border p-4 sm:p-6" role="img" aria-label={`Founders Hub illustration: ${s.title}`}>
             <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full opacity-25 blur-[80px]" style={{ background: 'var(--brand-tertiary)' }} aria-hidden />
-            <AnimatePresence mode="wait">
-              <motion.div key={s.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }} className="relative h-full">
-                {s.id === 'present' && <PresentScene />}
-                {s.id === 'discover' && <DiscoverScene />}
-                {s.id === 'connect' && <ConnectScene calm={calm} />}
-                {s.id === 'message' && <MessageScene />}
-              </motion.div>
-            </AnimatePresence>
+            <div className="relative">
+              <HubScene step={scene.index} calm={calm} />
+            </div>
           </div>
 
           <div>
-            <SceneSteps steps={STEPS} index={scene.index} onSelect={scene.select} playing={scene.playing} duration={STEP_MS} tone="blue" />
-            <div className="mt-6 min-h-[120px]">
+            <SceneSteps steps={STEPS} index={scene.index} onSelect={scene.select} advancing={scene.advancing} duration={STEP_MS} tone="blue" label="Founders Hub story" />
+            <SceneStatus advancing={scene.advancing} manual={scene.manual} calm={scene.calm} onReplay={scene.replay} step={scene.index + 1} total={STEPS.length} className="mt-4" />
+            <div className="mt-4 min-h-[120px]">
               <AnimatePresence mode="wait">
                 <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
                   <h3 className="font-display text-[1.25rem] font-semibold">{s.title}</h3>
