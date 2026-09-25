@@ -6,12 +6,12 @@ import { Problem } from '@/components/landing/Problem'
 import { DashboardShowcase, OpportunitiesKnowledge } from '@/components/landing/Showcase'
 import { HubStory } from '@/components/landing/HubStory'
 import { Ecosystem } from '@/components/landing/Ecosystem'
-import { About, BuildStory, FinalCTA } from '@/components/landing/Closing'
+import { About, BuildStory, FinalCTA, Partners } from '@/components/landing/Closing'
 
 /**
  * P4's story, re-composed:
- * problem → one dashboard → opportunities & knowledge → Founders Hub →
- * the wider ecosystem → optional Spryve Build → who we are → invitation.
+ * manifesto → problem → one dashboard → opportunities & knowledge → Founders Hub →
+ * the wider ecosystem → optional Spryve Build → who we are → partners → invitation.
  * Each section explains its states with a short timed scene or a click —
  * no pinned multi-screen scroll sequences.
  */
@@ -38,6 +38,7 @@ export default function Landing() {
         <Ecosystem />
         <BuildStory />
         <About />
+        <Partners />
         <FinalCTA />
       </main>
       <SiteFooter />

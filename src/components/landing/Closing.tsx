@@ -279,7 +279,34 @@ export function About() {
 }
 
 /* ========================================================================== */
-/* 08 — Invitation                                                              */
+/* 08 — Partners (concept placeholders; no relationships are implied)             */
+/* ========================================================================== */
+
+export function Partners() {
+  return (
+    <section className="border-line bg-raised border-y py-16 sm:py-20" aria-labelledby="partners-title">
+      <div className="container-site">
+        <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, ease }} className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+          <div>
+            <p className="eyebrow mb-3">A connected ecosystem</p>
+            <h2 id="partners-title" className="t-section">Built with people who help founders move forward.</h2>
+          </div>
+          <p className="text-fg-2 max-w-[48ch] text-[0.9375rem] lg:justify-self-end">This space is reserved for confirmed programme, community and service partners. Their names and logos will be added after approval.</p>
+        </motion.div>
+        <div className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Partner categories, awaiting confirmed partners">
+          {['Programmes', 'Communities', 'Services'].map((category, i) => (
+            <motion.div key={category} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08, ease }} className="border-line-strong bg-base flex min-h-24 items-center justify-center rounded-[16px] border border-dashed px-5 text-center">
+              <span className="text-fg-2 text-[0.8125rem]">{category} · logos to be added</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ========================================================================== */
+/* 09 — Invitation                                                              */
 /* ========================================================================== */
 
 export function FinalCTA() {
