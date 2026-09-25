@@ -45,13 +45,20 @@ providers) → Founders Hub → the wider ecosystem → optional Spryve Build �
 Nexus (Origin → Ignition → Spryve → Connections), then who we are → partners (reserved logo
 space, clearly marked placeholders) → invitation.
 
-Three effects follow the scroll: the opening lifting away, the dashboard settling into place,
-and the Nexus, whose four stages advance as you scroll through its section (stage tabs, Replay
-and Skip take over at any point). Every other scene starts the first time it enters the
-viewport, plays through once in a couple of seconds and rests on a readable final state; tabs,
-toggles and Replay override the timer. `useSequence` and `useAutoCycle` in `src/lib/hooks.ts`
-drive the timed scenes. With reduced motion (OS setting or Settings → Reduce motion), nothing
-is pinned or scroll-linked and every scene shows its completed state, still fully clickable.
+Scroll drives the story. The opening lifts away; the scattered cards travel into the dashboard
+and scatter again if you scroll back; the dashboard modules arrive in order and its four steps
+follow your position; in Founders Hub the card forms, founders appear and the connection draws
+as you scroll; Spryve Build moves from note to live product the same way. None of these play on
+a timer, and none pin the page. Tabs, toggles and Replay can show any point without moving the
+page, and the next scroll hands control back. Simple entrances play once when visible.
+
+The Spryve Nexus follows P1's creation story — Origin (nothing), Ignition (big bang), Spryve (the
+universe forms), Connections (a connected universe) — inside one short sticky stage. Every
+element is a function of scroll position, so scrolling back rewinds it; stage tabs, Replay and
+"Skip to Who we are" are always available, and phones get a simpler composition of the same story.
+`useScrollScene` in `src/lib/hooks.ts` is the shared driver. With reduced motion (OS setting or
+Settings → Reduce motion), nothing is pinned or scroll-linked: each scene shows a clear static
+state and every control still works.
 
 ## Routes
 

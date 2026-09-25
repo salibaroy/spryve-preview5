@@ -1,10 +1,10 @@
-import { useRef, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, LayoutGroup, motion, useScroll, useTransform } from 'motion/react'
 import { ArrowRight, ArrowUpRight, BookOpen, FileText, GraduationCap } from 'lucide-react'
 import { DashboardMock, type MockModule } from './DashboardMock'
-import { Band, SceneStatus, SceneSteps, SectionIntro } from './parts'
-import { useAutoCycle, useCalm } from '@/lib/hooks'
+import { Band, SceneControls, SceneSteps, SectionIntro } from './parts'
+import { useCalm, useDriven, useScrollScene } from '@/lib/hooks'
 import { daysUntil, formatDate, opportunities, type OppCategory } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -49,7 +49,15 @@ const VIEWS: {
   },
 ]
 
-const VIEW_MS = 2150
+/*
+ * Scroll map for the dashboard (0..1 as the mock travels up the screen):
+ * 0–0.34 the modules arrive in order (next steps → context → the rest),
+ * 0.4–1  the four steps, each lighting its part of the dashboard.
+ */
+const STEP_START = 0.4
+const STEP_SPAN = (1 - STEP_START) / 4
+const revealFor = (v: number) => (v < 0.1 ? 0 : v < 0.22 ? 1 : v < 0.34 ? 2 : 3)
+const stepFor = (v: number) => Math.max(0, Math.min(3, Math.floor((v - STEP_START) / STEP_SPAN)))
 
 /**
  * The payoff: as the section scrolls in, the dashboard tilts up out of the
@@ -72,9 +80,13 @@ function Payoff({ children }: { children: ReactNode }) {
 }
 
 export function DashboardShowcase() {
-  /* Plays through once when it enters view, then rests on the last step. */
-  const scene = useAutoCycle(VIEWS.length, VIEW_MS)
-  const v = VIEWS[scene.index]
+  /* Follows the scroll: nothing advances while you read unless you scroll or pick a step. */
+  const scene = useScrollScene({ start: [0, 0.9], end: [1, 0.55], calmValue: STEP_START + STEP_SPAN / 2 })
+  const reveal = useDriven(scene.driver, revealFor)
+  const index = useDriven(scene.driver, stepFor)
+  const fill = useTransform(scene.driver, [STEP_START, 1], [0, 1])
+  const v = VIEWS[index]
+  const select = (i: number) => scene.goTo(STEP_START + (i + 0.5) * STEP_SPAN, 0)
   return (
     <Band id="dashboard">
       <div
@@ -96,10 +108,10 @@ export function DashboardShowcase() {
           body="Relevant information and what to do about it — arranged so you understand it in a few seconds."
         />
 
-        <div ref={scene.ref} className="mt-10 grid items-start gap-8 lg:mt-14 lg:grid-cols-[0.62fr_1.38fr] lg:gap-12">
-          <div className="lg:sticky lg:top-28">
-            <SceneSteps steps={VIEWS} index={scene.index} onSelect={scene.select} advancing={scene.advancing} duration={VIEW_MS} className="lg:flex-col lg:items-start" label="Dashboard story" />
-            <SceneStatus advancing={scene.advancing} manual={scene.manual} calm={scene.calm} onReplay={scene.replay} step={scene.index + 1} total={VIEWS.length} className="mt-4" />
+        <div className="mt-10 grid items-start gap-8 lg:mt-14 lg:grid-cols-[0.62fr_1.38fr] lg:gap-12">
+          <div className="order-2 lg:sticky lg:top-28 lg:order-1">
+            <SceneSteps steps={VIEWS} index={index} onSelect={select} fill={fill} className="lg:flex-col lg:items-start" label="Dashboard story" />
+            <SceneControls calm={scene.calm} onReplay={() => scene.replay(4)} className="mt-4" />
             <div className="relative mt-4 min-h-[132px]">
               <AnimatePresence mode="wait">
                 <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.35 }}>
@@ -113,12 +125,11 @@ export function DashboardShowcase() {
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
-          {/* Touching the illustration counts as taking over, like picking a step. */}
-          <Payoff>
-            <div onPointerDown={() => scene.advancing && scene.select(scene.index)}>
-              <DashboardMock focus={v.focus} />
-            </div>
-          </Payoff>
+          <div ref={scene.ref} className="order-1 lg:order-2">
+            <Payoff>
+              <DashboardMock reveal={reveal} focus={reveal >= 3 ? v.focus : reveal >= 1 ? ['next'] : undefined} dim={0.45} />
+            </Payoff>
+          </div>
         </div>
       </div>
     </Band>
@@ -136,8 +147,6 @@ const FILTERS: { id: OppCategory; label: string }[] = [
   { id: 'services', label: 'Services' },
 ]
 
-const FILTER_MS = 2100
-
 function metaFor(id: string) {
   const o = opportunities.find((x) => x.id === id)!
   if (o.category === 'events') return `${formatDate(o.date!)} · ${o.location}`
@@ -146,9 +155,9 @@ function metaFor(id: string) {
 }
 
 export function OpportunitiesKnowledge() {
-  /* One pass through the tabs, then it rests; any click takes over. */
-  const scene = useAutoCycle(FILTERS.length, FILTER_MS)
-  const f = FILTERS[scene.index]
+  /* Tabs change only when you choose — nothing cycles while you read. */
+  const [tab, setTab] = useState(0)
+  const f = FILTERS[tab]
   const all = opportunities.filter((o) => o.category === f.id)
   const rows = all.slice(0, 3)
   const lead = rows[0]
@@ -165,7 +174,7 @@ export function OpportunitiesKnowledge() {
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[1.25fr_1fr]">
           {/* Directory */}
-          <div ref={scene.ref} className="bg-base border-line min-w-0 rounded-[22px] border p-5 sm:p-6">
+          <div className="bg-base border-line min-w-0 rounded-[22px] border p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <p className="eyebrow">Opportunities</p>
               <span className="text-fg-2 text-[0.75rem]" aria-live="polite">
@@ -175,14 +184,14 @@ export function OpportunitiesKnowledge() {
             <LayoutGroup id="p5-dir">
               <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Directory">
                 {FILTERS.map((x, i) => {
-                  const on = i === scene.index
+                  const on = i === tab
                   return (
                     <button
                       key={x.id}
                       type="button"
                       role="tab"
                       aria-selected={on}
-                      onClick={() => scene.select(i)}
+                      onClick={() => setTab(i)}
                       className={cn('relative shrink-0 rounded-full border px-3.5 py-1.5 text-[0.8125rem] transition-colors', on ? 'text-fg border-transparent' : 'border-line text-fg-2 hover:text-fg')}
                     >
                       {on && (
@@ -197,19 +206,6 @@ export function OpportunitiesKnowledge() {
                         />
                       )}
                       <span className="relative">{x.label}</span>
-                      {on && scene.advancing && (
-                        <motion.span
-                          key={`t-${i}`}
-                          className="bg-electric absolute bottom-0 left-3 h-px"
-                          initial={{ width: 0 }}
-                          animate={{ width: 'calc(100% - 1.5rem)' }}
-                          transition={{
-                            duration: FILTER_MS / 1000,
-                            ease: 'linear',
-                          }}
-                          aria-hidden
-                        />
-                      )}
                     </button>
                   )
                 })}

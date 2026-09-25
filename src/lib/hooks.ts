@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useInView, useReducedMotion } from 'motion/react'
+import { animate, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, type AnimationPlaybackControls, type MotionValue } from 'motion/react'
 import { useStore } from './store'
 
 /** True when the OS asks for less motion OR the preview setting forces it. */
@@ -9,90 +9,94 @@ export function useCalm() {
   return Boolean(system) || state.settings.motion === 'reduced'
 }
 
+type ScrollOffsetT = NonNullable<NonNullable<Parameters<typeof useScroll>[0]>['offset']>
+
+/** [element edge, viewport edge] as fractions: [0, 0.85] = "element top meets 85% down the viewport". */
+export type Edge = [number, number]
+
 /**
- * Timed, replayable scene stepping. Starts when the section first comes into
- * view, advances only while it stays on screen, plays through once and rests
- * on the last step (unless `loop`). Any manual selection stops the timer for
- * good; `replay` hands control back. Reduced motion never auto-advances and
- * can jump straight to a composed state (`calmIndex`) — every step stays
- * reachable by click.
+ * A scene driven by scroll position. `driver` (0..1) follows the element's
+ * scroll progress between `start` and `end`, so scrolling forward or back
+ * moves the scene with you — no timers, nothing plays while you read.
+ * `goTo` and `replay` let buttons take over briefly without moving the page;
+ * the next scroll hands control back (with a short catch-up, not a jump).
+ * Reduced motion: the driver rests at `calmValue` and only buttons move it.
  */
-export function useAutoCycle(count: number, ms: number, opts: { loop?: boolean; calmIndex?: number } = {}) {
+export function useScrollScene({ start, end, calmValue = 1 }: { start: Edge; end: Edge; calmValue?: number }) {
   const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { amount: 0.35 })
   const calm = useCalm()
-  const [index, setIndex] = useState(() => (calm && opts.calmIndex !== undefined ? opts.calmIndex : 0))
-  const [manual, setManual] = useState(false)
-  const [runId, setRunId] = useState(0)
-  const playing = inView && !calm && !manual
-  const done = !opts.loop && index >= count - 1
-
-  /* Reduced motion: jump straight to the composed end state (still clickable). */
-  useEffect(() => {
-    if (calm && !manual && opts.calmIndex !== undefined) setIndex(opts.calmIndex)
-  }, [calm, manual, opts.calmIndex])
+  const { scrollYProgress } = useScroll({ target: ref, offset: [`${start[0]} ${start[1]}`, `${end[0]} ${end[1]}`] as ScrollOffsetT })
+  const driver = useMotionValue(calm ? calmValue : 0)
+  const s = useRef<{ override: boolean; anim: AnimationPlaybackControls | null; until: number; y: number }>({ override: false, anim: null, until: 0, y: 0 })
 
   useEffect(() => {
-    if (!playing || done) return
-    const id = window.setTimeout(() => setIndex((i) => (i + 1) % count), ms)
-    return () => window.clearTimeout(id)
-  }, [playing, done, index, count, ms, runId])
+    s.current.anim?.stop()
+    s.current.override = false
+    driver.set(calm ? calmValue : scrollYProgress.get())
+  }, [calm, calmValue, driver, scrollYProgress])
+  useEffect(() => () => s.current.anim?.stop(), [])
 
-  const select = useCallback((i: number) => {
-    setManual(true)
-    setIndex(i)
-  }, [])
+  useMotionValueEvent(scrollYProgress, 'change', (v) => {
+    if (calm) return
+    const st = s.current
+    if (st.override) {
+      /* Progress can also change because content resized (a caption growing a
+         line); only a real scroll hands control back. */
+      if (Math.abs(window.scrollY - st.y) < 2) return
+      st.override = false
+      st.anim?.stop()
+      st.anim = animate(driver, v, { duration: 0.35, ease: [0.22, 1, 0.36, 1] })
+      st.until = performance.now() + 350
+      return
+    }
+    if (performance.now() < st.until) {
+      st.anim?.stop()
+      st.anim = animate(driver, v, { duration: 0.15 })
+      return
+    }
+    st.anim?.stop()
+    driver.set(v)
+  })
 
-  const replay = useCallback(() => {
-    setManual(false)
-    setIndex(0)
-    setRunId((r) => r + 1)
-  }, [])
+  /** Show a point in the scene (animated unless `duration` is 0) without scrolling. */
+  const goTo = useCallback(
+    (v: number, duration = 0.9) => {
+      const st = s.current
+      st.anim?.stop()
+      st.y = window.scrollY
+      if (calm || duration === 0) {
+        if (!calm) st.override = true
+        driver.set(v)
+        return
+      }
+      st.override = true
+      st.anim = animate(driver, v, { duration, ease: [0.45, 0, 0.25, 1] })
+    },
+    [calm, driver],
+  )
 
-  /** True while a step is counting down to the next one (drives progress bars). */
-  const advancing = playing && !done
-  return { ref, index, select, replay, playing, advancing, manual, calm, inView, done, runId }
+  /** Play the scene from the start once, at a steady pace. */
+  const replay = useCallback(
+    (duration = 3) => {
+      const st = s.current
+      st.anim?.stop()
+      if (calm) return driver.set(calmValue)
+      st.y = window.scrollY
+      st.override = true
+      driver.set(0)
+      st.anim = animate(driver, 1, { duration, ease: 'linear' })
+    },
+    [calm, calmValue, driver],
+  )
+
+  return { ref, driver, goTo, replay, calm }
 }
 
-/**
- * A one-shot timeline: `times` are offsets (ms) at which the phase steps up.
- * Phase 0 is the opening state; phase `times.length` is the resting state.
- * Starts the first time the element is in view and then plays to the end —
- * the sequences are a few seconds long, so they never wait on further scroll.
- * Reduced motion renders the resting state immediately.
- */
-export function useSequence(times: number[], opts: { amount?: number } = {}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { amount: opts.amount ?? 0.35, once: true })
-  const calm = useCalm()
-  const end = times.length
-  const [phase, setPhase] = useState(() => (calm ? end : 0))
-  const [manual, setManual] = useState(false)
-  const [runId, setRunId] = useState(0)
-  const key = times.join(',')
-
-  useEffect(() => {
-    if (calm && !manual) setPhase(end)
-  }, [calm, manual, end])
-
-  useEffect(() => {
-    if (!inView || calm || manual) return
-    const ids = key.split(',').map((t, i) => window.setTimeout(() => setPhase(i + 1), Number(t)))
-    return () => ids.forEach((id) => window.clearTimeout(id))
-  }, [inView, calm, manual, key, runId])
-
-  const select = useCallback((p: number) => {
-    setManual(true)
-    setPhase(p)
-  }, [])
-
-  const replay = useCallback(() => {
-    setManual(false)
-    setPhase(0)
-    setRunId((r) => r + 1)
-  }, [])
-
-  return { ref, phase, select, replay, calm, inView, manual, done: phase >= end, runId }
+/** A small derived value (a step index, a flag) that re-renders only when it changes. */
+export function useDriven<T>(mv: MotionValue<number>, fn: (v: number) => T): T {
+  const [val, setVal] = useState(() => fn(mv.get()))
+  useMotionValueEvent(mv, 'change', (v) => setVal(fn(v)))
+  return val
 }
 
 /** Live media-query match (SSR-safe default: false). */

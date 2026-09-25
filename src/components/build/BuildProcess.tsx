@@ -1,29 +1,21 @@
-import { useEffect, useState } from 'react'
-import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, useTransform } from 'motion/react'
 import { Check } from 'lucide-react'
 import { BUILD_STAGES } from '@/lib/data'
-import { useAutoCycle } from '@/lib/hooks'
+import { useDriven, useScrollScene } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
-import { SceneStatus } from '@/components/landing/parts'
+import { SceneControls } from '@/components/landing/parts'
 
 const ease = [0.22, 1, 0.36, 1] as const
-export const BUILD_STEP_MS = 2200
 
-/** A short in-stage beat (wireframe → designed, open → confirmed), replayed on entry. */
-function useBeat(active: boolean, ms: number, calm: boolean) {
-  const [on, setOn] = useState(calm)
-  useEffect(() => {
-    if (!active) return
-    if (calm) {
-      setOn(true)
-      return
-    }
-    setOn(false)
-    const id = window.setTimeout(() => setOn(true), ms)
-    return () => window.clearTimeout(id)
-  }, [active, ms, calm])
-  return on || calm
-}
+/*
+ * Scroll map (0..1 as the process moves up the screen), seven beats:
+ * idea · brief · wireframe · designed · product running · cover confirmed · live.
+ */
+const BEATS = [0.14, 0.28, 0.42, 0.55, 0.68, 0.82]
+const beatFor = (v: number) => BEATS.filter((b) => v >= b).length
+const STAGE_OF_BEAT = [0, 1, 2, 2, 3, 3, 4]
+/* Where each stage tab lands: that stage's finished state. */
+const STAGE_AT = [0.07, 0.21, 0.5, 0.76, 0.95]
 
 /* The one example that evolves: a clinic-rota idea called Cadence. */
 const ITEMS = [
@@ -39,9 +31,10 @@ const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity
  * mounted and change form, so the visitor watches one idea become a product:
  * note → brief → wireframe → designed interface → working product → live.
  */
-function BuildCanvas({ k, calm }: { k: number; calm: boolean }) {
-  const designed = useBeat(k === 2, 650, calm) || k > 2
-  const confirmed = useBeat(k === 3, 750, calm) || k > 3
+function BuildCanvas({ beat }: { beat: number }) {
+  const k = STAGE_OF_BEAT[beat]
+  const designed = beat >= 3
+  const confirmed = beat >= 5
   const note = k === 0
   const brief = k === 1
   const wire = k === 2 && !designed
@@ -218,36 +211,27 @@ function BuildCanvas({ k, calm }: { k: number; calm: boolean }) {
   )
 }
 
-/** Idea → Shape → Design → Develop → Launch, as a timed, clickable sequence. */
+/** Idea → Shape → Design → Develop → Launch, following the scroll; any stage is one click away. */
 export function BuildProcess({ detailed = false }: { detailed?: boolean }) {
-  const scene = useAutoCycle(BUILD_STAGES.length, BUILD_STEP_MS, { calmIndex: BUILD_STAGES.length - 1 })
-  const s = BUILD_STAGES[scene.index]
-  const span = 80 / (BUILD_STAGES.length - 1)
+  const scene = useScrollScene({ start: [0, 0.8], end: [1, 0.4], calmValue: STAGE_AT[4] })
+  const beat = useDriven(scene.driver, beatFor)
+  const index = STAGE_OF_BEAT[beat]
+  const s = BUILD_STAGES[index]
+  const rail = useTransform(scene.driver, [0.07, 0.95], ['0%', '80%'])
 
   return (
     <div ref={scene.ref}>
-      {/* rail: filled up to the current stage, with the next leg counting down while it plays */}
+      {/* rail: fills with the scroll */}
       <div className="relative">
         <div className="bg-fg/10 absolute top-[15px] right-[10%] left-[10%] h-[2px] rounded-full" aria-hidden />
-        <motion.div className="bg-lime absolute top-[15px] left-[10%] h-[2px] rounded-full" animate={{ width: `${scene.index * span}%` }} transition={{ duration: 0.6, ease }} aria-hidden />
-        {scene.advancing && (
-          <motion.div
-            key={`leg-${scene.index}-${scene.runId}`}
-            className="bg-lime/35 absolute top-[15px] h-[2px] rounded-full"
-            style={{ left: `${10 + scene.index * span}%` }}
-            initial={{ width: 0 }}
-            animate={{ width: `${span}%` }}
-            transition={{ duration: BUILD_STEP_MS / 1000, ease: 'linear' }}
-            aria-hidden
-          />
-        )}
+        <motion.div className="bg-lime absolute top-[15px] left-[10%] h-[2px] rounded-full" style={{ width: rail }} aria-hidden />
         <ol className="relative grid grid-cols-5" role="tablist" aria-label="Build stages">
           {BUILD_STAGES.map((st, i) => {
-            const on = i === scene.index
-            const past = i < scene.index
+            const on = i === index
+            const past = i < index
             return (
               <li key={st.id} className="flex justify-center">
-                <button type="button" role="tab" aria-selected={on} onClick={() => scene.select(i)} className="group flex flex-col items-center gap-2">
+                <button type="button" role="tab" aria-selected={on} onClick={() => scene.goTo(STAGE_AT[i], 0)} className="group flex flex-col items-center gap-2">
                   <span
                     className={cn(
                       'grid h-8 w-8 place-items-center rounded-full border font-mono text-[0.6875rem] transition-colors duration-300',
@@ -271,13 +255,13 @@ export function BuildProcess({ detailed = false }: { detailed?: boolean }) {
           role="img"
           aria-label={`Example project at the ${s.label} stage`}
         >
-          <BuildCanvas k={scene.index} calm={scene.calm} />
+          <BuildCanvas beat={beat} />
         </div>
         <div className="min-h-[180px]">
           <AnimatePresence mode="wait">
             <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>
               <p className="eyebrow">
-                Stage {scene.index + 1} of {BUILD_STAGES.length}
+                Stage {index + 1} of {BUILD_STAGES.length}
               </p>
               <h3 className="font-display mt-2 text-[1.3rem] font-semibold">{s.title}</h3>
               <p className="text-fg-2 mt-2 text-[0.9375rem]">{s.body}</p>
@@ -288,7 +272,7 @@ export function BuildProcess({ detailed = false }: { detailed?: boolean }) {
               )}
             </motion.div>
           </AnimatePresence>
-          <SceneStatus advancing={scene.advancing} manual={scene.manual} calm={scene.calm} onReplay={scene.replay} replayLabel="Replay the process" className="mt-4" />
+          <SceneControls calm={scene.calm} onReplay={() => scene.replay(5)} replayLabel="Replay the process" className="mt-4" />
         </div>
       </div>
     </div>

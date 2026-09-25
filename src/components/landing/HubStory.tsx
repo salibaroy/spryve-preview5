@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, useTransform, type MotionValue } from 'motion/react'
 import { ArrowRight, Check, UserPlus } from 'lucide-react'
-import { Band, SceneStatus, SceneSteps, SectionIntro } from './parts'
+import { Band, SceneControls, SceneSteps, SectionIntro } from './parts'
 import { Avatar } from '@/components/ui'
-import { useAutoCycle, useCalm } from '@/lib/hooks'
+import { useDriven, useScrollScene } from '@/lib/hooks'
 import { companies, founderName, initialsOf, SAMPLE_COMPANY } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -15,7 +14,16 @@ const STEPS = [
   { id: 'message', label: 'Message', title: 'Keep the conversation going', body: 'Messages live next to the company profile, so context never gets lost in another app.' },
 ]
 
-const STEP_MS = 2250
+/*
+ * Scroll map (0..1 as the illustration moves up the screen), in eight beats:
+ * 0 form · 1 public card · 2 founders who fit · 3 connection draws (with the
+ * scroll) · 4 request sent · 5 connected · 6–7 the two preview messages.
+ */
+const BEATS = [0.12, 0.26, 0.42, 0.58, 0.66, 0.76, 0.88]
+const beatFor = (v: number) => BEATS.filter((b) => v >= b).length
+const STEP_OF_BEAT = [0, 0, 1, 2, 2, 2, 3, 3]
+/* Where each tab lands: the end state of its step. */
+const STEP_AT = [0.19, 0.34, 0.71, 0.95]
 const ease = [0.22, 1, 0.36, 1] as const
 
 /* Founders who fit Cadence (Healthtech · MVP · Beirut) — the first one is who we connect with. */
@@ -26,19 +34,6 @@ const FOUNDERS = [
 ]
 const MATCH = FOUNDERS[0].c
 const MATCH_PERSON = founderName(MATCH)
-
-/** Runs a short in-step beat (e.g. form → card) each time a step is entered. */
-function useBeat(active: boolean, ms: number, calm: boolean) {
-  const [on, setOn] = useState(calm)
-  useEffect(() => {
-    if (!active) return
-    if (calm) return setOn(true)
-    setOn(false)
-    const id = window.setTimeout(() => setOn(true), ms)
-    return () => window.clearTimeout(id)
-  }, [active, ms, calm])
-  return on || calm
-}
 
 function YouCard() {
   return (
@@ -88,15 +83,15 @@ function CompanyForm() {
   )
 }
 
-function FounderCard({ f, index, step, connected }: { f: (typeof FOUNDERS)[number]; index: number; step: number; connected: 'none' | 'sent' | 'yes' }) {
+function FounderCard({ f, index, sub, connected }: { f: (typeof FOUNDERS)[number]; index: number; sub: number; connected: 'none' | 'sent' | 'yes' }) {
   const match = index === 0
   const person = founderName(f.c)
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: step >= 2 && !match ? 0.4 : 1, x: 0 }}
-      transition={{ duration: 0.45, ease, delay: step === 1 ? 0.15 + index * 0.14 : 0 }}
-      className={cn('bg-raised rounded-[14px] border p-3', match && step >= 1 ? 'border-electric/55 glow-blue' : 'border-line', index === 2 && 'max-sm:hidden')}
+      animate={{ opacity: sub >= 3 && !match ? 0.4 : 1, x: 0 }}
+      transition={{ duration: 0.4, ease, delay: sub === 2 ? index * 0.08 : 0 }}
+      className={cn('bg-raised rounded-[14px] border p-3', match && sub >= 2 ? 'border-electric/55 glow-blue' : 'border-line', index === 2 && 'max-sm:hidden')}
     >
       <div className="flex min-w-0 items-center gap-2.5">
         <Avatar initials={initialsOf(person)} size="sm" accent={f.c.accent} />
@@ -129,45 +124,23 @@ function FounderCard({ f, index, step, connected }: { f: (typeof FOUNDERS)[numbe
   )
 }
 
-/** The link between the two cards: horizontal beside, vertical when stacked. */
-function Link2({ on, calm }: { on: boolean; calm: boolean }) {
+/** The link between the two cards (horizontal beside, vertical when stacked) — it draws with the scroll. */
+function Link2({ line }: { line: MotionValue<number> }) {
   return (
     <div className="flex h-8 items-center justify-center sm:h-auto sm:pt-7" aria-hidden>
       <svg viewBox="0 0 56 8" className="hidden w-full sm:block" preserveAspectRatio="none">
         <line x1="2" y1="4" x2="54" y2="4" stroke="var(--line-strong)" strokeWidth="1.5" strokeDasharray="3 4" />
-        <motion.line
-          x1="2"
-          y1="4"
-          x2="54"
-          y2="4"
-          stroke="var(--brand-tertiary)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          initial={false}
-          animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }}
-          transition={{ duration: calm ? 0 : 0.7, ease }}
-        />
+        <motion.line x1="2" y1="4" x2="54" y2="4" stroke="var(--brand-tertiary)" strokeWidth="2" strokeLinecap="round" style={{ pathLength: line, opacity: line }} />
       </svg>
       <svg viewBox="0 0 8 32" className="h-full sm:hidden">
         <line x1="4" y1="2" x2="4" y2="30" stroke="var(--line-strong)" strokeWidth="1.5" strokeDasharray="3 4" />
-        <motion.line
-          x1="4"
-          y1="2"
-          x2="4"
-          y2="30"
-          stroke="var(--brand-tertiary)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          initial={false}
-          animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }}
-          transition={{ duration: calm ? 0 : 0.7, ease }}
-        />
+        <motion.line x1="4" y1="2" x2="4" y2="30" stroke="var(--brand-tertiary)" strokeWidth="2" strokeLinecap="round" style={{ pathLength: line, opacity: line }} />
       </svg>
     </div>
   )
 }
 
-function MessagePreview() {
+function MessagePreview({ count }: { count: number }) {
   const msgs = [
     { me: true, text: 'Both running hospital pilots — could we compare notes?' },
     { me: false, text: 'Happy to. Thursday afternoon works.' },
@@ -179,12 +152,12 @@ function MessagePreview() {
         <span className="border-line-strong text-fg-2 rounded-full border px-2 py-0.5 font-mono text-[0.5625rem] tracking-widest uppercase">Illustration</span>
       </div>
       <div className="mt-2 flex flex-1 flex-col justify-end gap-1.5">
-        {msgs.map((m, i) => (
+        {msgs.slice(0, count).map((m, i) => (
           <motion.p
             key={i}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + i * 0.7, duration: 0.35, ease }}
+            transition={{ duration: 0.35, ease }}
             className={cn('max-w-[80%] rounded-[14px] px-3 py-1.5 text-[0.75rem]', m.me ? 'bg-electric/20 border-electric/40 self-end rounded-br-[4px] border' : 'bg-base border-line self-start rounded-bl-[4px] border')}
           >
             {m.text}
@@ -195,30 +168,28 @@ function MessagePreview() {
   )
 }
 
-function HubScene({ step, calm }: { step: number; calm: boolean }) {
-  const formed = useBeat(step === 0, 1300, calm)
-  const accepted = useBeat(step === 2, 1300, calm)
-  const connected: 'none' | 'sent' | 'yes' = step < 2 ? 'none' : step === 2 && !accepted ? 'sent' : 'yes'
+function HubScene({ sub, line }: { sub: number; line: MotionValue<number> }) {
+  const connected: 'none' | 'sent' | 'yes' = sub < 4 ? 'none' : sub === 4 ? 'sent' : 'yes'
   return (
     <LayoutGroup id="p5-hub">
       <div className="grid gap-0 sm:grid-cols-[1fr_56px_1fr] sm:items-start">
         <div>
           <p className="eyebrow mb-2 !text-[0.5625rem]">You</p>
-          {step === 0 && !formed ? <CompanyForm /> : <YouCard />}
+          {sub === 0 ? <CompanyForm /> : <YouCard />}
         </div>
-        <Link2 on={step >= 2} calm={calm} />
+        <Link2 line={line} />
         <div>
-          <p className="eyebrow mb-2 !text-[0.5625rem]">{step >= 1 ? 'Founders who fit' : 'Founders Hub'}</p>
+          <p className="eyebrow mb-2 !text-[0.5625rem]">{sub >= 2 ? 'Founders who fit' : 'Founders Hub'}</p>
           <div className="flex flex-col gap-2">
-            {step >= 1
-              ? FOUNDERS.map((f, i) => <FounderCard key={f.c.slug} f={f} index={i} step={step} connected={connected} />)
+            {sub >= 2
+              ? FOUNDERS.map((f, i) => <FounderCard key={f.c.slug} f={f} index={i} sub={sub} connected={connected} />)
               : [0, 1, 2].map((i) => <div key={i} className={cn('border-line-strong h-[58px] rounded-[14px] border border-dashed opacity-50', i === 2 && 'max-sm:hidden')} aria-hidden />)}
           </div>
         </div>
       </div>
       <div className="mt-4 h-[116px]">
-        {step >= 3 ? (
-          <MessagePreview />
+        {sub >= 6 ? (
+          <MessagePreview count={sub - 5} />
         ) : (
           <div className="border-line-strong text-fg-2 grid h-full place-items-center rounded-[16px] border border-dashed text-[0.75rem] opacity-60">Conversations start once you connect</div>
         )}
@@ -228,9 +199,13 @@ function HubScene({ step, calm }: { step: number; calm: boolean }) {
 }
 
 export function HubStory() {
-  const scene = useAutoCycle(STEPS.length, STEP_MS, { calmIndex: STEPS.length - 1 })
-  const calm = useCalm()
-  const s = STEPS[scene.index]
+  /* From the illustration's top at 80% of the screen to its bottom at 35%: an ordinary scroll, no pinning. */
+  const scene = useScrollScene({ start: [0, 0.8], end: [1, 0.35], calmValue: STEP_AT[3] })
+  const sub = useDriven(scene.driver, beatFor)
+  const line = useTransform(scene.driver, [BEATS[2], BEATS[3]], [0, 1])
+  const fill = useTransform(scene.driver, [0, 1], [0, 1])
+  const index = STEP_OF_BEAT[sub]
+  const s = STEPS[index]
   return (
     <Band id="founders-hub">
       <div className="container-site">
@@ -245,17 +220,17 @@ export function HubStory() {
           body="Building a company isn’t only about tools. Founders Hub is where you present your company, find others, connect and talk."
         />
 
-        <div ref={scene.ref} className="mt-12 grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:gap-14">
-          <div className="border-line bg-base relative overflow-hidden rounded-[24px] border p-4 sm:p-6" role="img" aria-label={`Founders Hub illustration: ${s.title}`}>
+        <div className="mt-12 grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:gap-14">
+          <div ref={scene.ref} className="border-line bg-base relative overflow-hidden rounded-[24px] border p-4 sm:p-6" role="img" aria-label={`Founders Hub illustration: ${s.title}`}>
             <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full opacity-25 blur-[80px]" style={{ background: 'var(--brand-tertiary)' }} aria-hidden />
             <div className="relative">
-              <HubScene step={scene.index} calm={calm} />
+              <HubScene sub={sub} line={line} />
             </div>
           </div>
 
           <div>
-            <SceneSteps steps={STEPS} index={scene.index} onSelect={scene.select} advancing={scene.advancing} duration={STEP_MS} tone="blue" label="Founders Hub story" />
-            <SceneStatus advancing={scene.advancing} manual={scene.manual} calm={scene.calm} onReplay={scene.replay} step={scene.index + 1} total={STEPS.length} className="mt-4" />
+            <SceneSteps steps={STEPS} index={index} onSelect={(i) => scene.goTo(STEP_AT[i], 0)} fill={fill} tone="blue" label="Founders Hub story" />
+            <SceneControls calm={scene.calm} onReplay={() => scene.replay(4.5)} className="mt-4" />
             <div className="mt-4 min-h-[120px]">
               <AnimatePresence mode="wait">
                 <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3 }}>

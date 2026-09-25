@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { motion } from 'motion/react'
+import { motion, useTransform, type MotionValue } from 'motion/react'
 import { RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -23,18 +23,21 @@ export function SectionIntro({ index, eyebrow, title, body, className, align = '
   )
 }
 
+function StepFill({ fill, i, n, className }: { fill: MotionValue<number>; i: number; n: number; className: string }) {
+  const width = useTransform(fill, (v) => `${Math.max(0, Math.min(1, v * n - i)) * 100}%`)
+  return <motion.span style={{ width }} className={cn('absolute bottom-0 left-0 h-[2px]', className)} aria-hidden />
+}
+
 /**
- * Step buttons for a timed scene. The active step shows a thin progress bar
- * while it counts down to the next one, and completed steps keep a quiet
- * filled bar — so visitors can see the scene is moving on its own, how far
- * along it is, and take over with a click at any point.
+ * Step buttons for a scroll-led scene. Each tab carries a thin bar that fills
+ * as you scroll through its part of the scene (`fill`, 0..1 across all
+ * steps), so progress is visible and any step is one click away.
  */
 export function SceneSteps({
   steps,
   index,
   onSelect,
-  advancing,
-  duration,
+  fill,
   className,
   tone = 'lime',
   label = 'Scene steps',
@@ -42,8 +45,7 @@ export function SceneSteps({
   steps: { id: string; label: string }[]
   index: number
   onSelect: (i: number) => void
-  advancing: boolean
-  duration: number
+  fill?: MotionValue<number>
   className?: string
   tone?: 'lime' | 'blue'
   label?: string
@@ -60,23 +62,16 @@ export function SceneSteps({
             role="tab"
             aria-selected={on}
             onClick={() => onSelect(i)}
-            className={cn('relative overflow-hidden rounded-full border px-3.5 py-2 text-[0.8125rem] font-medium transition-colors', on ? 'border-line-strong bg-raised text-fg' : 'border-line text-fg-2 hover:text-fg')}
+            className={cn(
+              'relative overflow-hidden rounded-full border px-3.5 py-2 text-[0.8125rem] font-medium transition-colors',
+              on ? 'border-line-strong bg-raised text-fg' : 'border-line text-fg-2 hover:text-fg',
+            )}
           >
             <span className="relative z-10 flex items-center gap-2">
               <span className={cn('font-mono text-[0.6875rem]', on ? (tone === 'lime' ? 'text-lime' : 'text-electric') : 'text-fg-2')}>{String(i + 1).padStart(2, '0')}</span>
               {s.label}
             </span>
-            {i < index && <span className={cn('absolute bottom-0 left-0 h-[2px] w-full opacity-35', bar)} aria-hidden />}
-            {on && advancing && (
-              <motion.span
-                key={`bar-${index}`}
-                className={cn('absolute bottom-0 left-0 h-[2px]', bar)}
-                initial={{ width: '0%' }}
-                animate={{ width: '100%' }}
-                transition={{ duration: duration / 1000, ease: 'linear' }}
-                aria-hidden
-              />
-            )}
+            {fill && <StepFill fill={fill} i={i} n={steps.length} className={bar} />}
           </button>
         )
       })}
@@ -84,39 +79,15 @@ export function SceneSteps({
   )
 }
 
-/** "Playing / Paused / Finished" plus Replay — the scene's state, stated plainly. */
-export function SceneStatus({
-  advancing,
-  manual,
-  calm,
-  onReplay,
-  step,
-  total,
-  replayLabel = 'Replay',
-  className,
-}: {
-  advancing: boolean
-  manual: boolean
-  calm?: boolean
-  onReplay: () => void
-  step?: number
-  total?: number
-  replayLabel?: string
-  className?: string
-}) {
-  const text = advancing ? 'Playing' : manual ? 'Paused · you’re in control' : calm ? 'Reduced motion · choose a step' : 'Finished'
+/** The quiet line under a scroll-led scene: how it moves, plus Replay. */
+export function SceneControls({ onReplay, calm, replayLabel = 'Replay', className }: { onReplay: () => void; calm?: boolean; replayLabel?: string; className?: string }) {
   return (
     <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', className)}>
-      <span className="text-fg-2 inline-flex items-center gap-2 text-[0.75rem]" aria-live="polite">
-        <span className={cn('h-1.5 w-1.5 rounded-full', advancing ? 'bg-lime' : 'bg-fg/30')} aria-hidden />
-        {step !== undefined && total !== undefined && (
-          <span className="font-mono">
-            {step} / {total}
-          </span>
-        )}
-        {text}
+      <span className="text-fg-2 inline-flex items-center gap-2 text-[0.75rem]">
+        <span className="bg-lime h-1.5 w-1.5 rounded-full" aria-hidden />
+        {calm ? 'Reduced motion · choose a step' : 'Moves as you scroll · or choose a step'}
       </span>
-      <ReplayButton onClick={onReplay} label={replayLabel} />
+      {!calm && <ReplayButton onClick={onReplay} label={replayLabel} />}
     </div>
   )
 }
