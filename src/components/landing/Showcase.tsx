@@ -1,9 +1,10 @@
+import { useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion, useScroll, useTransform } from 'motion/react'
 import { ArrowRight, ArrowUpRight, BookOpen, FileText, GraduationCap } from 'lucide-react'
 import { DashboardMock, type MockModule } from './DashboardMock'
 import { Band, SceneStatus, SceneSteps, SectionIntro } from './parts'
-import { useAutoCycle } from '@/lib/hooks'
+import { useAutoCycle, useCalm } from '@/lib/hooks'
 import { daysUntil, formatDate, opportunities, type OppCategory } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +51,26 @@ const VIEWS: {
 
 const VIEW_MS = 2150
 
+/**
+ * The payoff: as the section scrolls in, the dashboard tilts up out of the
+ * page and settles flat and full-size — the scattered pieces above, now one
+ * working surface. Scroll-linked; static with reduced motion.
+ */
+function Payoff({ children }: { children: ReactNode }) {
+  const calm = useCalm()
+  const ref = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'start 35%'] })
+  const scale = useTransform(scrollYProgress, [0, 1], [0.9, 1])
+  const rotateX = useTransform(scrollYProgress, [0, 1], [14, 0])
+  const y = useTransform(scrollYProgress, [0, 1], [70, 0])
+  const opacity = useTransform(scrollYProgress, [0, 0.6], [0.35, 1])
+  return (
+    <div ref={ref} style={{ perspective: 1400 }}>
+      <motion.div style={calm ? undefined : { scale, rotateX, y, opacity, transformOrigin: '50% 0%' }}>{children}</motion.div>
+    </div>
+  )
+}
+
 export function DashboardShowcase() {
   /* Plays through once when it enters view, then rests on the last step. */
   const scene = useAutoCycle(VIEWS.length, VIEW_MS)
@@ -93,9 +114,11 @@ export function DashboardShowcase() {
             </Link>
           </div>
           {/* Touching the illustration counts as taking over, like picking a step. */}
-          <div onPointerDown={() => scene.advancing && scene.select(scene.index)}>
-            <DashboardMock focus={v.focus} />
-          </div>
+          <Payoff>
+            <div onPointerDown={() => scene.advancing && scene.select(scene.index)}>
+              <DashboardMock focus={v.focus} />
+            </div>
+          </Payoff>
         </div>
       </div>
     </Band>

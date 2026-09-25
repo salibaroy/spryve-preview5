@@ -38,18 +38,20 @@ A "Higher contrast" appearance and a "Reduce motion" setting are available in Se
 
 ## Landing story
 
-Problem (scattered cards travel into one dashboard) → the dashboard (auto-advancing tabs) →
-opportunities & knowledge (directory tabs that lead out to providers) → Founders Hub (Present → Discover →
-Connect → Message) → the wider ecosystem (directory map) → Spryve Build (Idea → Shape →
-Design → Develop → Launch) → About us with the Spryve Nexus → invitation.
+The landing opens with a spacious brand statement (no interface on the first screen), then
+follows P4's story: the scattered founder experience (cards travel into one dashboard) → one
+useful dashboard (the payoff) → opportunities & knowledge (directory tabs that lead out to
+providers) → Founders Hub → the wider ecosystem → optional Spryve Build → About: the Spryve
+Nexus (Origin → Ignition → Spryve → Connections), then who we are → partners (reserved logo
+space, clearly marked placeholders) → invitation.
 
-Every scene starts the first time it enters the viewport, plays through once in a few
-seconds using timed motion (never scroll-to-advance or pinned sections), and then rests on a
-readable final state. Tabs, toggles and Replay override the timer at any point; tabbed scenes
-show a per-step progress bar and a Playing / Paused / Finished status. `useSequence` (one-shot
-timelines) and `useAutoCycle` (stepped scenes) in `src/lib/hooks.ts` drive all of it.
-With reduced motion (OS setting or Settings → Reduce motion), scenes render their completed
-state immediately and stay fully clickable.
+Three effects follow the scroll: the opening lifting away, the dashboard settling into place,
+and the Nexus, whose four stages advance as you scroll through its section (stage tabs, Replay
+and Skip take over at any point). Every other scene starts the first time it enters the
+viewport, plays through once in a couple of seconds and rests on a readable final state; tabs,
+toggles and Replay override the timer. `useSequence` and `useAutoCycle` in `src/lib/hooks.ts`
+drive the timed scenes. With reduced motion (OS setting or Settings → Reduce motion), nothing
+is pinned or scroll-linked and every scene shows its completed state, still fully clickable.
 
 ## Routes
 

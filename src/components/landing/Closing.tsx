@@ -1,12 +1,9 @@
 import { Link } from 'react-router-dom'
-import { motion, useMotionValueEvent, useScroll } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRight, Compass, Hammer, Layers } from 'lucide-react'
-import { Band, ReplayButton, SectionIntro } from './parts'
+import { motion } from 'motion/react'
+import { ArrowRight, Briefcase, Compass, Hammer, ImageIcon, Layers, Rocket, UsersRound } from 'lucide-react'
+import { Band, SectionIntro } from './parts'
 import { BuildProcess } from '@/components/build/BuildProcess'
-import { SpryveMark } from '@/components/ui'
 import { BUILD_SERVICES } from '@/lib/data'
-import { useCalm } from '@/lib/hooks'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -58,248 +55,133 @@ export function BuildStory() {
 }
 
 /* ========================================================================== */
-/* 07 — About: the Spryve Nexus + who we are                                    */
+/* 07b — Who we are (follows the Nexus scene)                                   */
 /* ========================================================================== */
-
-const C = { x: 200, y: 150 }
-const SOURCES = [
-  { id: 'opp', label: 'Opportunities', x: 46, y: 36, color: 'var(--brand-secondary)', row: 'Programmes, funding, events' },
-  { id: 'know', label: 'Knowledge', x: 354, y: 36, color: 'var(--brand-tertiary)', row: 'Guides, templates, courses' },
-  { id: 'people', label: 'People', x: 46, y: 264, color: 'var(--text-1)', row: 'Founders Hub' },
-  { id: 'build', label: 'Building support', x: 354, y: 264, color: 'var(--brand-secondary)', row: 'Spryve Build (optional)' },
-]
-
-/* Each signal sweeps in on a slight clockwise arc, so the four read as one converging motion. */
-const curve = (s: (typeof SOURCES)[number]) => {
-  const dx = C.x - s.x
-  const dy = C.y - s.y
-  const len = Math.hypot(dx, dy)
-  const bend = 46
-  const cx = (s.x + C.x) / 2 + (-dy / len) * bend
-  const cy = (s.y + C.y) / 2 + (dx / len) * bend
-  return `M ${s.x} ${s.y} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${C.x} ${C.y}`
-}
-
-const RESULT = [
-  { id: 'opp', text: 'Opportunities that fit your stage' },
-  { id: 'know', text: 'Guides and the lesson you’re on' },
-  { id: 'people', text: 'Founders worth meeting' },
-  { id: 'build', text: 'Building help — only if you ask' },
-]
-
-const NEXUS_STAGES = [
-  { name: 'Origin', title: 'One founder has a question.', body: 'A single signal starts the search.' },
-  { name: 'Ignition', title: 'The right paths come into view.', body: 'Opportunities, knowledge, people and building support become visible.' },
-  { name: 'Spryve', title: 'The separate paths connect.', body: 'The signals find one shared centre instead of four separate places.' },
-  { name: 'Connections', title: 'One founder experience.', body: 'A useful next step, relevant knowledge and people who can help.' },
-] as const
-
-function Nexus() {
-  const ref = useRef<HTMLDivElement>(null)
-  const replayTimers = useRef<number[]>([])
-  const calm = useCalm()
-  const [phase, setPhase] = useState(calm ? 3 : 0)
-  const [manual, setManual] = useState(false)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 85%', 'end 20%'] })
-
-  // One short scroll through this section controls the four frames. Visitors
-  // can still choose a stage directly; clicking a stage takes precedence.
-  useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    if (!manual && !calm) setPhase(Math.min(3, Math.floor(progress * 4)))
-  })
-  useEffect(() => {
-    if (calm && !manual) setPhase(3)
-  }, [calm, manual])
-  useEffect(() => () => replayTimers.current.forEach(window.clearTimeout), [])
-
-  const select = useCallback((index: number) => {
-    replayTimers.current.forEach(window.clearTimeout)
-    replayTimers.current = []
-    setManual(true)
-    setPhase(index)
-  }, [])
-  const replay = useCallback(() => {
-    replayTimers.current.forEach(window.clearTimeout)
-    setManual(true)
-    setPhase(0)
-    if (calm) return
-    replayTimers.current = [1, 2, 3].map((step) => window.setTimeout(() => setPhase(step), step * 430))
-  }, [calm])
-
-  return (
-    <div ref={ref} className="relative">
-      <div className="border-line bg-base relative overflow-hidden rounded-[24px] border p-4 sm:p-6">
-        <div className="relative">
-          <svg viewBox="0 0 400 300" className="h-auto w-full" role="img" aria-label="Four signals — opportunities, knowledge, people and building support — converge into one founder experience">
-            <defs>
-              <radialGradient id="nexus-core" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="var(--brand-tertiary)" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="var(--brand-tertiary)" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-
-            {/* The path is revealed after the signals appear, so the four
-                stages read as a story rather than an ornamental network. */}
-            {SOURCES.map((s, i) => (
-              <g key={s.id}>
-                <path d={curve(s)} fill="none" stroke="var(--line-strong)" strokeWidth="1" strokeDasharray="2 4" />
-                <motion.path
-                  d={curve(s)}
-                  fill="none"
-                  stroke={s.color}
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  initial={false}
-                  animate={{ pathLength: phase >= 2 ? 1 : 0, opacity: phase >= 2 ? (phase >= 3 ? 0.55 : 0.9) : 0 }}
-                  transition={{ duration: 0.48, ease, delay: phase === 2 ? i * 0.07 : 0 }}
-                />
-                {phase === 2 && !calm && (
-                  <motion.path
-                    d={curve(s)}
-                    pathLength={1}
-                    fill="none"
-                    stroke={s.color}
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray="0.06 1"
-                    initial={{ strokeDashoffset: 0.06 }}
-                    animate={{ strokeDashoffset: -1 }}
-                    transition={{ duration: 0.55, ease, delay: i * 0.07 }}
-                  />
-                )}
-              </g>
-            ))}
-
-            {/* sources */}
-            {SOURCES.map((s, i) => (
-              <motion.g key={s.id} initial={false} animate={{ opacity: phase >= 1 ? 1 : 0, scale: phase >= 1 ? 1 : 0.6 }} transition={{ duration: 0.4, delay: phase === 1 ? i * 0.07 : 0 }} style={{ transformOrigin: `${s.x}px ${s.y}px` }}>
-                <circle cx={s.x} cy={s.y} r="7" fill="var(--surface-2)" stroke={s.color} strokeWidth="1.5" />
-                <circle cx={s.x} cy={s.y} r="2.5" fill={s.color} />
-                <text x={s.x} y={s.y < C.y ? s.y - 14 : s.y + 22} textAnchor={s.x < C.x ? 'start' : 'end'} dx={s.x < C.x ? -8 : 8} fontSize="11" fontFamily="var(--font-sans)" fill="var(--text-1)">
-                  {s.label}
-                </text>
-              </motion.g>
-            ))}
-
-            {/* core */}
-            <motion.circle cx={C.x} cy={C.y} r="75" fill="url(#nexus-core)" initial={false} animate={{ opacity: phase >= 1 ? 1 : 0.2, scale: phase >= 2 ? 1 : 0.4 }} transition={{ duration: 0.45, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }} />
-            <motion.circle cx={C.x} cy={C.y} r="40" fill="none" stroke="var(--brand-tertiary)" strokeWidth="0.7" initial={false} animate={{ opacity: phase === 2 ? 0.7 : 0, scale: phase === 2 ? 1 : 0.45 }} transition={{ duration: 0.45, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }} />
-            <motion.g initial={false} animate={{ scale: phase === 0 ? 0.4 : phase >= 3 ? 1.6 : 1, opacity: phase >= 3 ? 0 : 1 }} transition={{ duration: 0.45, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }}>
-              <circle cx={C.x} cy={C.y} r="26" fill="var(--surface-1)" stroke="var(--brand-secondary)" strokeWidth="1.5" />
-              <g transform={`translate(${C.x - 11} ${C.y - 11}) scale(0.92)`} color="var(--brand-secondary)">
-                <path d="M3 17.5 9.2 10l4 4.4L21 5.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                <circle cx="21" cy="5.5" r="2" fill="currentColor" />
-              </g>
-            </motion.g>
-          </svg>
-
-          {/* the resolved founder experience — in the centre of the diagram, below it on phones */}
-          <motion.div
-            initial={false}
-            animate={{ opacity: phase >= 3 ? 1 : 0, scale: phase >= 3 ? 1 : 0.85 }}
-            transition={{ duration: 0.42, ease }}
-            className="border-lime/45 bg-raised glow-lime relative mx-auto mt-3 max-w-[340px] rounded-[16px] border p-3 sm:absolute sm:top-1/2 sm:left-1/2 sm:mt-0 sm:w-[54%] sm:-translate-x-1/2 sm:-translate-y-1/2"
-            aria-hidden={phase < 3}
-          >
-            <p className="eyebrow mb-1.5 flex items-center gap-2 !text-[0.5625rem]">
-              <SpryveMark className="text-lime h-3 w-3" />
-              One founder experience
-            </p>
-            {RESULT.map((r, i) => {
-              const src = SOURCES.find((x) => x.id === r.id)!
-              return (
-                <motion.div
-                  key={r.id}
-                  initial={false}
-                  animate={{ opacity: phase >= 3 ? 1 : 0, x: phase >= 3 ? 0 : -6 }}
-                  transition={{ duration: 0.25, delay: phase >= 3 ? 0.08 + i * 0.045 : 0 }}
-                  className="border-line flex items-center gap-2 border-t py-1 first:border-t-0"
-                >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: src.color }} />
-                  <span className="text-fg truncate text-[0.6875rem] sm:text-[0.75rem]">{r.text}</span>
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </div>
-      <div className="mt-4" aria-live="polite">
-        <p className="eyebrow !text-[0.625rem]">The Spryve Nexus · {String(phase + 1).padStart(2, '0')} / 04</p>
-        <p className="font-display text-fg mt-1 text-[1.125rem] font-semibold">{NEXUS_STAGES[phase].title}</p>
-        <p className="text-fg-2 mt-1 min-h-[2.5em] text-[0.8125rem]">{NEXUS_STAGES[phase].body}</p>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Spryve Nexus stages">
-          {NEXUS_STAGES.map((stage, i) => (
-            <button key={stage.name} type="button" role="tab" aria-selected={phase === i} onClick={() => select(i)} className={`rounded-full border px-2.5 py-1 text-[0.75rem] transition-colors ${phase === i ? 'border-lime/50 bg-lime/10 text-lime' : 'border-line text-fg-2 hover:text-fg'}`}>
-              {stage.name}
-            </button>
-          ))}
-        </div>
-        <ReplayButton onClick={replay} />
-      </div>
-    </div>
-  )
-}
 
 export function About() {
   const facts = [
     { icon: Layers, title: 'We bring it together', body: 'Opportunities, knowledge, people and building support in one place, ordered around what you’re working on.' },
-    { icon: Compass, title: 'We point to the source', body: 'Listings explain an opportunity and send you to the provider. We don’t run programmes, fund companies or give legal advice.' },
-    { icon: Hammer, title: 'We help build — if you ask', body: 'Spryve Build is optional, hands-on support for shaping, designing and developing digital products.' },
+    { icon: Compass, title: 'We point to the source', body: 'Listings explain an opportunity and send you to the provider. We don’t run programmes, fund companies or provide the listed services.' },
+    { icon: Hammer, title: 'We help build — if you ask', body: 'Spryve Build is optional, hands-on help with product design and development. Most founders use Spryve without it.' },
   ]
   return (
-    <Band id="about" tone="raised">
-      <div className="container-site grid items-start gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-        <Nexus />
+    <Band id="who-we-are" tone="raised">
+      <div className="container-site grid items-start gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
         <div>
-          <SectionIntro index="07" eyebrow="About us" title="Who we are" />
-          <p className="lede mt-5">Spryve is a platform for founders. We’re building one understandable place for the startup world around you — so the time you spend searching goes back into building your company.</p>
-          <ul className="mt-8 flex flex-col gap-5">
-            {facts.map((f, i) => (
-              <motion.li key={f.title} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.5, ease }} className="flex gap-4">
-                <span className="border-line bg-base text-lime grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border">
-                  <f.icon className="h-[18px] w-[18px]" aria-hidden />
-                </span>
-                <span>
-                  <span className="font-display text-fg block text-[1rem] font-semibold">{f.title}</span>
-                  <span className="text-fg-2 mt-1 block text-[0.9375rem]">{f.body}</span>
-                </span>
-              </motion.li>
-            ))}
-          </ul>
+          <SectionIntro eyebrow="About us" title="Who we are" />
+          <p className="lede mt-5">
+            Spryve is a platform for founders. We’re building one understandable place for the startup world around you — so the time you spend
+            searching goes back into building your company.
+          </p>
           <div className="border-line-strong mt-8 rounded-[16px] border border-dashed px-4 py-3.5">
             <p className="text-fg text-[0.875rem] font-medium">Team and founding story — to be added</p>
             <p className="text-fg-2 mt-1 text-[0.8125rem]">Placeholder for the real team, photos and story once confirmed. No names or claims have been invented here.</p>
           </div>
         </div>
+        <ul className="grid gap-3">
+          {facts.map((f, i) => (
+            <motion.li
+              key={f.title}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.45, ease }}
+              className="border-line bg-base flex gap-4 rounded-[18px] border p-5"
+            >
+              <span className="border-line bg-raised text-lime grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border">
+                <f.icon className="h-[18px] w-[18px]" aria-hidden />
+              </span>
+              <span>
+                <span className="font-display text-fg block text-[1rem] font-semibold">{f.title}</span>
+                <span className="text-fg-2 mt-1 block text-[0.9375rem]">{f.body}</span>
+              </span>
+            </motion.li>
+          ))}
+        </ul>
       </div>
     </Band>
   )
 }
 
 /* ========================================================================== */
-/* 08 — Partners (concept placeholders; no relationships are implied)             */
+/* 08 — Partners banner (reserved space; no names, logos or relationships)      */
 /* ========================================================================== */
+
+const PARTNER_GROUPS = [
+  { icon: Rocket, title: 'Programmes', body: 'Accelerators, incubators, fellowships and competitions.' },
+  { icon: UsersRound, title: 'Communities', body: 'Founder networks, meetups and ecosystem organisations.' },
+  { icon: Briefcase, title: 'Service providers', body: 'Legal, accounting, banking, coworking and more.' },
+]
+
+function LogoSlot({ i }: { i: number }) {
+  return (
+    <div className="border-line-strong bg-base/60 flex h-12 items-center justify-center rounded-[12px] border border-dashed sm:h-16 lg:h-[72px]" aria-hidden>
+      <span className="text-fg-2/80 flex items-center gap-1.5 font-mono text-[0.5625rem] tracking-[0.14em] uppercase">
+        <ImageIcon className="h-3 w-3" />
+        <span className="max-sm:hidden">Logo</span> {String(i + 1).padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
 
 export function Partners() {
   return (
-    <section className="border-line bg-raised border-y py-16 sm:py-20" aria-labelledby="partners-title">
-      <div className="container-site">
-        <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, ease }} className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+    <section id="partners" className="border-line relative overflow-hidden border-y" aria-labelledby="partners-title">
+      <div className="bg-raised absolute inset-0" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[color-mix(in_oklab,var(--brand-tertiary)_60%,transparent)] to-transparent" aria-hidden />
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-80 w-[70%] -translate-x-1/2 opacity-20 blur-[100px]" style={{ background: 'var(--brand-tertiary)' }} aria-hidden />
+
+      <div className="relative mx-auto w-full max-w-[1440px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12">
+        <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <p className="eyebrow mb-3">A connected ecosystem</p>
-            <h2 id="partners-title" className="t-section">Built with people who help founders move forward.</h2>
+            <p className="eyebrow mb-3 flex items-center gap-2.5">
+              <span className="text-lime">08</span>
+              <span className="bg-fg/20 h-px w-6" aria-hidden />
+              Partners
+            </p>
+            <h2 id="partners-title" className="font-display max-w-[30ch] text-[clamp(1.5rem,2.6vw,2.25rem)] leading-[1.12] font-semibold tracking-[-0.03em] text-balance">
+              Spryve connects founders with <span className="text-electric">programmes, communities and service providers.</span>
+            </h2>
           </div>
-          <p className="text-fg-2 max-w-[48ch] text-[0.9375rem] lg:justify-self-end">This space is reserved for confirmed programme, community and service partners. Their names and logos will be added after approval.</p>
-        </motion.div>
-        <div className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Partner categories, awaiting confirmed partners">
-          {['Programmes', 'Communities', 'Services'].map((category, i) => (
-            <motion.div key={category} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08, ease }} className="border-line-strong bg-base flex min-h-24 items-center justify-center rounded-[16px] border border-dashed px-5 text-center">
-              <span className="text-fg-2 text-[0.8125rem]">{category} · logos to be added</span>
+          <span className="border-line-strong text-fg-2 inline-flex items-center gap-2 self-start rounded-full border px-3 py-1.5 text-[0.75rem] lg:self-end">
+            <span className="bg-fg/40 h-1.5 w-1.5 rounded-full" aria-hidden />
+            Placeholder · no partners shown yet
+          </span>
+        </div>
+
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {PARTNER_GROUPS.map((g, gi) => (
+            <motion.div
+              key={g.title}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-10% 0px' }}
+              transition={{ duration: 0.45, ease, delay: gi * 0.08 }}
+              className="border-line bg-base rounded-[20px] border p-4 sm:p-5"
+              aria-label={`${g.title}: logo space reserved for approved partners`}
+            >
+              <div className="flex items-start gap-3">
+                <span className="border-line-strong text-electric grid h-9 w-9 shrink-0 place-items-center rounded-[10px] border">
+                  <g.icon className="h-4 w-4" aria-hidden />
+                </span>
+                <span>
+                  <span className="font-display text-fg block text-[1rem] font-semibold">{g.title}</span>
+                  <span className="text-fg-2 block text-[0.8125rem]">{g.body}</span>
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-4 gap-2 lg:grid-cols-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <LogoSlot key={i} i={gi * 4 + i} />
+                ))}
+              </div>
             </motion.div>
           ))}
         </div>
+
+        <p className="text-fg-2 mt-6 max-w-[80ch] text-[0.8125rem]">
+          Reserved for approved partner logos, added only once each relationship is confirmed. Appearing in Spryve’s directories does not make an
+          organisation a Spryve partner.
+        </p>
       </div>
     </section>
   )

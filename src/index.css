@@ -145,6 +145,15 @@
     line-height: 1.04;
     letter-spacing: -0.035em;
   }
+  /* The landing statement only — bigger and tighter than t-hero, still readable on a phone. */
+  .t-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.6rem, 7.2vw, 5.75rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+  }
   .t-section {
     font-family: var(--font-display);
     font-weight: 600;
