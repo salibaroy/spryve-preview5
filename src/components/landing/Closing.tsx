@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, useMotionValueEvent, useScroll } from 'motion/react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Compass, Hammer, Layers } from 'lucide-react'
 import { Band, ReplayButton, SectionIntro } from './parts'
 import { BuildProcess } from '@/components/build/BuildProcess'
 import { SpryveMark } from '@/components/ui'
 import { BUILD_SERVICES } from '@/lib/data'
-import { useSequence } from '@/lib/hooks'
+import { useCalm } from '@/lib/hooks'
 
 const ease = [0.22, 1, 0.36, 1] as const
 
@@ -86,17 +87,47 @@ const RESULT = [
   { id: 'build', text: 'Building help — only if you ask' },
 ]
 
-/*
- * 0 four separate signals · 1 they travel inward · 2 the core forms ·
- * 3 one founder experience, then rest (no loop).
- */
-const NEXUS_TIMES = [500, 1500, 2200]
+const NEXUS_STAGES = [
+  { name: 'Origin', title: 'One founder has a question.', body: 'A single signal starts the search.' },
+  { name: 'Ignition', title: 'The right paths come into view.', body: 'Opportunities, knowledge, people and building support become visible.' },
+  { name: 'Spryve', title: 'The separate paths connect.', body: 'The signals find one shared centre instead of four separate places.' },
+  { name: 'Connections', title: 'One founder experience.', body: 'A useful next step, relevant knowledge and people who can help.' },
+] as const
 
 function Nexus() {
-  const scene = useSequence(NEXUS_TIMES)
-  const phase = scene.phase
+  const ref = useRef<HTMLDivElement>(null)
+  const replayTimers = useRef<number[]>([])
+  const calm = useCalm()
+  const [phase, setPhase] = useState(calm ? 3 : 0)
+  const [manual, setManual] = useState(false)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 85%', 'end 20%'] })
+
+  // One short scroll through this section controls the four frames. Visitors
+  // can still choose a stage directly; clicking a stage takes precedence.
+  useMotionValueEvent(scrollYProgress, 'change', (progress) => {
+    if (!manual && !calm) setPhase(Math.min(3, Math.floor(progress * 4)))
+  })
+  useEffect(() => {
+    if (calm && !manual) setPhase(3)
+  }, [calm, manual])
+  useEffect(() => () => replayTimers.current.forEach(window.clearTimeout), [])
+
+  const select = useCallback((index: number) => {
+    replayTimers.current.forEach(window.clearTimeout)
+    replayTimers.current = []
+    setManual(true)
+    setPhase(index)
+  }, [])
+  const replay = useCallback(() => {
+    replayTimers.current.forEach(window.clearTimeout)
+    setManual(true)
+    setPhase(0)
+    if (calm) return
+    replayTimers.current = [1, 2, 3].map((step) => window.setTimeout(() => setPhase(step), step * 430))
+  }, [calm])
+
   return (
-    <div ref={scene.ref} className="relative">
+    <div ref={ref} className="relative">
       <div className="border-line bg-base relative overflow-hidden rounded-[24px] border p-4 sm:p-6">
         <div className="relative">
           <svg viewBox="0 0 400 300" className="h-auto w-full" role="img" aria-label="Four signals — opportunities, knowledge, people and building support — converge into one founder experience">
@@ -107,7 +138,8 @@ function Nexus() {
               </radialGradient>
             </defs>
 
-            {/* signal paths */}
+            {/* The path is revealed after the signals appear, so the four
+                stages read as a story rather than an ornamental network. */}
             {SOURCES.map((s, i) => (
               <g key={s.id}>
                 <path d={curve(s)} fill="none" stroke="var(--line-strong)" strokeWidth="1" strokeDasharray="2 4" />
@@ -118,11 +150,10 @@ function Nexus() {
                   strokeWidth="1.6"
                   strokeLinecap="round"
                   initial={false}
-                  animate={{ pathLength: phase >= 1 ? 1 : 0, opacity: phase >= 1 ? (phase >= 3 ? 0.55 : 0.9) : 0 }}
-                  transition={{ duration: 0.9, ease, delay: phase === 1 ? i * 0.12 : 0 }}
+                  animate={{ pathLength: phase >= 2 ? 1 : 0, opacity: phase >= 2 ? (phase >= 3 ? 0.55 : 0.9) : 0 }}
+                  transition={{ duration: 0.48, ease, delay: phase === 2 ? i * 0.07 : 0 }}
                 />
-                {/* travelling signal — a short dash riding the normalised path, once */}
-                {phase === 1 && (
+                {phase === 2 && !calm && (
                   <motion.path
                     d={curve(s)}
                     pathLength={1}
@@ -133,7 +164,7 @@ function Nexus() {
                     strokeDasharray="0.06 1"
                     initial={{ strokeDashoffset: 0.06 }}
                     animate={{ strokeDashoffset: -1 }}
-                    transition={{ duration: 0.9, ease, delay: i * 0.12 }}
+                    transition={{ duration: 0.55, ease, delay: i * 0.07 }}
                   />
                 )}
               </g>
@@ -141,7 +172,7 @@ function Nexus() {
 
             {/* sources */}
             {SOURCES.map((s, i) => (
-              <motion.g key={s.id} initial={false} animate={{ opacity: phase >= 1 ? 1 : 0.55 }} transition={{ duration: 0.4, delay: phase === 1 ? i * 0.12 : 0 }}>
+              <motion.g key={s.id} initial={false} animate={{ opacity: phase >= 1 ? 1 : 0, scale: phase >= 1 ? 1 : 0.6 }} transition={{ duration: 0.4, delay: phase === 1 ? i * 0.07 : 0 }} style={{ transformOrigin: `${s.x}px ${s.y}px` }}>
                 <circle cx={s.x} cy={s.y} r="7" fill="var(--surface-2)" stroke={s.color} strokeWidth="1.5" />
                 <circle cx={s.x} cy={s.y} r="2.5" fill={s.color} />
                 <text x={s.x} y={s.y < C.y ? s.y - 14 : s.y + 22} textAnchor={s.x < C.x ? 'start' : 'end'} dx={s.x < C.x ? -8 : 8} fontSize="11" fontFamily="var(--font-sans)" fill="var(--text-1)">
@@ -151,8 +182,9 @@ function Nexus() {
             ))}
 
             {/* core */}
-            <motion.circle cx={C.x} cy={C.y} r="70" fill="url(#nexus-core)" initial={false} animate={{ opacity: phase >= 2 ? 1 : 0 }} transition={{ duration: 0.8 }} />
-            <motion.g initial={false} animate={{ scale: phase === 2 ? 1 : phase > 2 ? 1.4 : 0.3, opacity: phase === 2 ? 1 : 0 }} transition={{ duration: 0.6, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }}>
+            <motion.circle cx={C.x} cy={C.y} r="75" fill="url(#nexus-core)" initial={false} animate={{ opacity: phase >= 1 ? 1 : 0.2, scale: phase >= 2 ? 1 : 0.4 }} transition={{ duration: 0.45, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }} />
+            <motion.circle cx={C.x} cy={C.y} r="40" fill="none" stroke="var(--brand-tertiary)" strokeWidth="0.7" initial={false} animate={{ opacity: phase === 2 ? 0.7 : 0, scale: phase === 2 ? 1 : 0.45 }} transition={{ duration: 0.45, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }} />
+            <motion.g initial={false} animate={{ scale: phase === 0 ? 0.4 : phase >= 3 ? 1.6 : 1, opacity: phase >= 3 ? 0 : 1 }} transition={{ duration: 0.45, ease }} style={{ transformOrigin: `${C.x}px ${C.y}px` }}>
               <circle cx={C.x} cy={C.y} r="26" fill="var(--surface-1)" stroke="var(--brand-secondary)" strokeWidth="1.5" />
               <g transform={`translate(${C.x - 11} ${C.y - 11}) scale(0.92)`} color="var(--brand-secondary)">
                 <path d="M3 17.5 9.2 10l4 4.4L21 5.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -165,7 +197,7 @@ function Nexus() {
           <motion.div
             initial={false}
             animate={{ opacity: phase >= 3 ? 1 : 0, scale: phase >= 3 ? 1 : 0.85 }}
-            transition={{ duration: 0.5, ease }}
+            transition={{ duration: 0.42, ease }}
             className="border-lime/45 bg-raised glow-lime relative mx-auto mt-3 max-w-[340px] rounded-[16px] border p-3 sm:absolute sm:top-1/2 sm:left-1/2 sm:mt-0 sm:w-[54%] sm:-translate-x-1/2 sm:-translate-y-1/2"
             aria-hidden={phase < 3}
           >
@@ -180,7 +212,7 @@ function Nexus() {
                   key={r.id}
                   initial={false}
                   animate={{ opacity: phase >= 3 ? 1 : 0, x: phase >= 3 ? 0 : -6 }}
-                  transition={{ duration: 0.35, delay: phase >= 3 ? 0.15 + i * 0.08 : 0 }}
+                  transition={{ duration: 0.25, delay: phase >= 3 ? 0.08 + i * 0.045 : 0 }}
                   className="border-line flex items-center gap-2 border-t py-1 first:border-t-0"
                 >
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: src.color }} />
@@ -191,9 +223,20 @@ function Nexus() {
           </motion.div>
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between">
-        <p className="text-fg-2 text-[0.75rem]">The Spryve Nexus · four kinds of support, one place</p>
-        <ReplayButton onClick={scene.replay} />
+      <div className="mt-4" aria-live="polite">
+        <p className="eyebrow !text-[0.625rem]">The Spryve Nexus · {String(phase + 1).padStart(2, '0')} / 04</p>
+        <p className="font-display text-fg mt-1 text-[1.125rem] font-semibold">{NEXUS_STAGES[phase].title}</p>
+        <p className="text-fg-2 mt-1 min-h-[2.5em] text-[0.8125rem]">{NEXUS_STAGES[phase].body}</p>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Spryve Nexus stages">
+          {NEXUS_STAGES.map((stage, i) => (
+            <button key={stage.name} type="button" role="tab" aria-selected={phase === i} onClick={() => select(i)} className={`rounded-full border px-2.5 py-1 text-[0.75rem] transition-colors ${phase === i ? 'border-lime/50 bg-lime/10 text-lime' : 'border-line text-fg-2 hover:text-fg'}`}>
+              {stage.name}
+            </button>
+          ))}
+        </div>
+        <ReplayButton onClick={replay} />
       </div>
     </div>
   )

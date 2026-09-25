@@ -50,10 +50,10 @@ const SETTLED: Signal = {
 /*
  * Entrance, in one short pass: the frame lands, next steps light up, the
  * context modules fill in, two signals point at what changed today, and the
- * dashboard settles fully readable with next steps still marked. ~6 s total,
- * readable from ~1.5 s, never loops.
+ * dashboard settles fully readable with next steps still marked. The whole
+ * pass is short enough that visitors never wait for the interface to arrive.
  */
-const TIMES = [650, 1100, 1550, 2900, 4400, 5900]
+const TIMES = [180, 420, 700, 1120, 1600, 2250]
 
 function signalFor(phase: number): Signal | undefined {
   if (phase < 1) return undefined

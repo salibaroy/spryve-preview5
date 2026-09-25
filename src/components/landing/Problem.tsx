@@ -60,7 +60,7 @@ const FLIGHT_ORDER = [0, 1, 3, 2, 6, 4, 5, 7]
  * 2  each fragment travels into its slot and takes on its dashboard meaning
  * 3  settled: next step lit, the view reads as one thing
  */
-const TIMES = [1300, 1900, 3500]
+const TIMES = [450, 950, 1900]
 
 function Fragment({ i, layoutId, rot }: { i: number; layoutId?: string; rot: number }) {
   const f = SCATTER[i]

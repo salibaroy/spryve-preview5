@@ -15,7 +15,7 @@ const STEPS = [
   { id: 'message', label: 'Message', title: 'Keep the conversation going', body: 'Messages live next to the company profile, so context never gets lost in another app.' },
 ]
 
-const STEP_MS = 3400
+const STEP_MS = 2250
 const ease = [0.22, 1, 0.36, 1] as const
 
 /* Founders who fit Cadence (Healthtech · MVP · Beirut) — the first one is who we connect with. */

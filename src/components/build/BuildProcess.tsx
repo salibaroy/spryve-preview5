@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { SceneStatus } from '@/components/landing/parts'
 
 const ease = [0.22, 1, 0.36, 1] as const
-export const BUILD_STEP_MS = 3200
+export const BUILD_STEP_MS = 2200
 
 /** A short in-stage beat (wireframe → designed, open → confirmed), replayed on entry. */
 function useBeat(active: boolean, ms: number, calm: boolean) {
@@ -40,8 +40,8 @@ const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity
  * note → brief → wireframe → designed interface → working product → live.
  */
 function BuildCanvas({ k, calm }: { k: number; calm: boolean }) {
-  const designed = useBeat(k === 2, 1100, calm) || k > 2
-  const confirmed = useBeat(k === 3, 1300, calm) || k > 3
+  const designed = useBeat(k === 2, 650, calm) || k > 2
+  const confirmed = useBeat(k === 3, 750, calm) || k > 3
   const note = k === 0
   const brief = k === 1
   const wire = k === 2 && !designed

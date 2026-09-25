@@ -48,7 +48,7 @@ const VIEWS: {
   },
 ]
 
-const VIEW_MS = 3800
+const VIEW_MS = 2150
 
 export function DashboardShowcase() {
   /* Plays through once when it enters view, then rests on the last step. */
@@ -113,7 +113,7 @@ const FILTERS: { id: OppCategory; label: string }[] = [
   { id: 'services', label: 'Services' },
 ]
 
-const FILTER_MS = 3600
+const FILTER_MS = 2100
 
 function metaFor(id: string) {
   const o = opportunities.find((x) => x.id === id)!
